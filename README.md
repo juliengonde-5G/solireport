@@ -55,6 +55,10 @@ docker compose -f /var/www/solireport/docker-compose.yml up -d
 curl -sS http://127.0.0.1:8088/health
 ```
 
+Le fichier `docker-compose.yml` est du **YAML** : on l’édite avec `nano`, `vim`, etc. **Ne pas** coller son contenu dans le terminal (le shell affichera `command not found`).
+
+**Réseau Solidata :** le service `web` est aussi rattaché au réseau externe **`solidata-network`** (créé par le compose Solidata). Sans ce réseau sur la machine, créez-le : `docker network create solidata-network`, ou commentez les lignes `solidata-network` dans le compose pour un usage local sans Solidata.
+
 Si `docker compose` n’existe pas, essayez l’ancienne CLI : `docker-compose` (paquet `docker-compose-plugin` ou `docker-compose-v2` selon la distro).
 
 **Dépannage rapide**

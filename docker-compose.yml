@@ -60,7 +60,11 @@ services:
       - .:/usr/share/nginx/html:ro
     networks:
       - solireport
+      # Meme reseau que solidata-proxy : permet proxy_pass http://solireport-web depuis Nginx Solidata
+      - solidata-network
 
 networks:
   solireport:
     driver: bridge
+  solidata-network:
+    external: true

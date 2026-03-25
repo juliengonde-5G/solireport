@@ -70,6 +70,17 @@ Configurer les secrets du dépôt (**Settings → Secrets and variables → Acti
 
 Sur le serveur : clé publique dans `~/.ssh/authorized_keys` de `PROD_USER`, droits en écriture sur `PROD_REMOTE_PATH`. Après le premier sync, redémarrer le service Gunicorn si nécessaire (`sudo systemctl restart solireport-proxy` ou équivalent).
 
+### Script d’installation sur le serveur (SSH)
+
+Une fois les fichiers du dépôt présents sur le serveur (git clone, rsync ou workflow) :
+
+```bash
+cd /var/www/solireport   # ou votre PROD_REMOTE_PATH
+sudo bash deploy/install-server.sh
+```
+
+Variables optionnelles : `INSTALL_DIR`, `SERVICE_USER` (défaut `www-data`), `LISTEN_HOST` (défaut `127.0.0.1`), `LISTEN_PORT` (défaut `8765`). Le script crée le venv, installe les paquets Python, installe et démarre le service systemd `solireport-proxy`.
+
 Variables utiles :
 
 - `CORS_ALLOW_ORIGIN` : origine autorisée ou `*` (défaut réfléchit l’`Origin` du navigateur si `*`).

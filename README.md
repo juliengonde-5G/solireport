@@ -45,11 +45,25 @@ Un stack **Nginx + Gunicorn** sert l’appli sur le port **8088** (HTTP). Vous n
 
 ```bash
 cd /var/www/solireport
+# Si Git refuse le depot (proprietaire different, ex. deploy vs root) :
+sudo git config --global --add safe.directory /var/www/solireport
 git pull origin main
-docker compose build --pull
-docker compose up -d
+# Verifier que le fichier compose est bien la :
+test -f docker-compose.yml && echo OK || echo "docker-compose.yml manquant — git pull / deploiement incomplet"
+docker compose -f /var/www/solireport/docker-compose.yml build --pull
+docker compose -f /var/www/solireport/docker-compose.yml up -d
 curl -sS http://127.0.0.1:8088/health
 ```
+
+Si `docker compose` n’existe pas, essayez l’ancienne CLI : `docker-compose` (paquet `docker-compose-plugin` ou `docker-compose-v2` selon la distro).
+
+**Dépannage rapide**
+
+| Symptôme | Cause probable | Action |
+|----------|----------------|--------|
+| `detected dubious ownership` | Répertoire déployé par un autre utilisateur que celui qui lance `git` | `sudo git config --global --add safe.directory /var/www/solireport` (une fois), ou harmoniser `chown` du dossier |
+| `no configuration file provided: not found` | Pas de `docker-compose.yml` dans le répertoire courant, ou mauvais `cd` | `cd /var/www/solireport` puis `ls docker-compose.yml`, ou `git pull` après `safe.directory` |
+| `curl ... 8088 ... Failed to connect` | Les conteneurs ne tournent pas | `docker compose -f /var/www/solireport/docker-compose.yml ps` et `docker compose ... logs` |
 
 Ensuite, configurez le **proxy frontal** (celui qui écoute déjà en 443) pour router le host `dashboard.solidata.online` vers **http://`IP_DU_SERVEUR`:8088** (ou `http://172.17.0.1:8088` depuis un conteneur sur le réseau bridge par défaut). Le TLS reste géré par ce frontal.
 

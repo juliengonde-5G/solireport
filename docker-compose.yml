@@ -18,6 +18,9 @@ services:
       CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN:-https://dashboard.solidata.online}
     expose:
       - "8765"
+    # Debug depuis l'hote : curl http://127.0.0.1:18765/health (si 8088 reset mais pas 18765 -> souci Nginx / docker-proxy)
+    ports:
+      - "127.0.0.1:18765:8765"
     healthcheck:
       test:
         [

@@ -82,7 +82,9 @@ Variable optionnelle : `CORS_ALLOW_ORIGIN` dans `docker compose` (fichier `.env`
 
 **Mises à jour :** `git pull && docker compose up -d --build`
 
-Si `/live` renvoie **404**, l’ancienne image Nginx sans notre config tournait encore, ou le montage du fichier `nginx-default.conf` était vide (fichier absent sur le serveur). Depuis la correction « config dans l’image », faire un **`docker compose build web --no-cache`** puis **`up -d`** après `git pull`.
+La config Nginx est dans **`deploy/docker/nginx.conf`** (fichier principal complet, pas seul `conf.d`), copiée dans l’image **`Dockerfile.web`**. Après changement de config : **`docker compose build web --no-cache && docker compose up -d`**.
+
+**Si `curl` sur 8088 donne « Connection reset »** : tester dans l’ordre — `curl -4 --http1.0 -H "Connection: close" http://127.0.0.1:8088/live` ; **`curl http://127.0.0.1:18765/health`** (Gunicorn exposé en local sur l’hôte, sans passer par Nginx) ; **`docker exec solireport-web wget -qO- http://127.0.0.1/live`** ; **`docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' solireport-web`** puis `curl http://<IP>/live`. Cela distingue un bug **docker-proxy / port publish** (IP conteneur OK, 127.0.0.1:8088 KO) d’un souci **Nginx**.
 
 ---
 

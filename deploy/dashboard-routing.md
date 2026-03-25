@@ -135,6 +135,20 @@ docker exec solidata-proxy nginx -t && docker exec solidata-proxy nginx -s reloa
 curl -sI https://dashboard.solidata.online/live | head -5
 ```
 
+### D. « Toujours l’autre appli » en HTTPS alors que le 301 HTTP est bon
+
+Cause fréquente : le fichier sur **`/opt/solidata.online/...`** (monté dans le proxy) n’a **que** le bloc `listen 80` ; le bloc **`listen 443 ssl`** pour `dashboard.solidata.online` est encore **commenté** ou absent. Après le 301 vers `https://dashboard...`, Nginx utilise le **`default_server` du 443** → Solidata.
+
+Vérification sur le serveur :
+
+```bash
+docker exec solidata-proxy nginx -T 2>/dev/null | grep -E "server_name|listen 443" | head -40
+```
+
+Vous devez voir une ligne **`listen 443`** dans le même bloc que **`server_name dashboard.solidata.online`**.
+
+**Correction :** sur l’**hôte**, éditez le vrai fichier `dashboard...conf` (pas seulement la copie sous `/var/www/solireport`), **décommentez** un bloc `server { listen 443 ssl ... }` (certificat dédié **ou** variante SAN avec les chemins `solidata.online`, voir `deploy/dashboard.solidata.online.conf`), puis `nginx -t` et reload.
+
 ---
 
 ## Étape 3 — Traefik

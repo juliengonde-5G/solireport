@@ -79,25 +79,46 @@ docker exec solidata-proxy wget -qO- http://solireport-web/live
 
 Attendu : `ok`.
 
-### B. Ajouter le vhost dans nginx (solidata-proxy)
+### B. Pourquoi **HTTPS** affiche encore l’autre appli
 
-1. Sur la machine, ouvrez le projet **Solidata** (là où est le `docker-compose` qui lance `solidata-proxy`).
-2. Repérez comment les fichiers nginx sont montés dans le conteneur (souvent `./nginx/conf.d` → `/etc/nginx/conf.d`).
-3. Créez un nouveau fichier, par ex. `dashboard.solidata.online.conf`, en vous inspirant de **`deploy/nginx-solidata-proxy-dashboard.example.conf`** dans le dépôt SoliReport (`git pull` dans `/var/www/solireport` pour le récupérer).
-4. Rechargez nginx :
+Sur le port **443**, Nginx choisit un `server` avec `server_name` qui correspond. **S’il n’existe aucun bloc `listen 443 ssl` pour `dashboard.solidata.online`**, la requête tombe sur le **`default_server`** du 443 — en général **Solidata**. Le réseau Docker ne change rien à cela : il **faut** un vhost **HTTPS** dédié + certificat valide pour le dashboard.
+
+### C. Installer le vhost (HTTP puis HTTPS)
+
+**1.** `git pull` dans SoliReport, puis copier le fichier **déjà prêt** dans le proxy :
+
+```bash
+cd /var/www/solireport && git pull origin main
+docker cp /var/www/solireport/deploy/dashboard.solidata.online.conf solidata-proxy:/etc/nginx/conf.d/dashboard.solidata.online.conf
+docker exec solidata-proxy nginx -t && docker exec solidata-proxy nginx -s reload
+```
+
+Si `docker cp` échoue (volume en lecture seule), copiez le même fichier dans le dossier **hôte** qui est monté sur `/etc/nginx/conf.d/` (voir `docker inspect solidata-proxy` → section `Mounts`), puis rechargez Nginx.
+
+**2.** Vérifier en **HTTP** (sans « s ») :
+
+```bash
+curl -sI http://dashboard.solidata.online/live | head -5
+```
+
+Vous devez voir **200** (pas une redirection vers `solidata.online` seul).
+
+**3.** **Certificat Let’s Encrypt** pour `dashboard.solidata.online` : même procédure que pour `solidata.online` (souvent conteneur `certbot` + webroot `/var/www/certbot` sur le port 80). Exemple type (à adapter aux noms de services/volumes de **votre** compose Solidata) :
+
+```bash
+# depuis le repertoire du docker-compose Solidata
+docker compose run --rm certbot certonly --webroot -w /var/www/certbot -d dashboard.solidata.online
+```
+
+**4.** Dans `/var/www/solireport/deploy/dashboard.solidata.online.conf`, **décommentez** tout le bloc `server { listen 443 ssl http2; ... }`, vérifiez les chemins `ssl_certificate` / `ssl_certificate_key`, recopiez le fichier dans le conteneur (ou éditez sur l’hôte), puis :
 
 ```bash
 docker exec solidata-proxy nginx -t && docker exec solidata-proxy nginx -s reload
 ```
 
-### C. Certificat TLS pour `dashboard.solidata.online`
-
-Utilisez la **même méthode** que pour `solidata.online` (souvent **Certbot** + volume `certbot` + challenge HTTP sur le port 80). Émettez un certificat pour **`dashboard.solidata.online`**, puis **décommentez** le bloc `listen 443` dans la config (voir l’exemple dans le fichier `.example.conf`).
-
-### D. Test
+**5.** Tester **HTTPS** :
 
 ```bash
-curl -sI http://dashboard.solidata.online/live | head -5
 curl -sI https://dashboard.solidata.online/live | head -5
 ```
 

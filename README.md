@@ -115,7 +115,7 @@ python3 -m venv .venv
 
 SoliReport tourne sur **8088 en HTTP** ; le **HTTPS** et le nom d’hôte `dashboard.solidata.online` sont gérés par **votre reverse proxy existant** (Docker : Traefik, Caddy, nginx-proxy, etc.). Tant qu’aucune règle n’envoie **ce** host vers `http://127.0.0.1:8088` (ou `http://172.17.0.1:8088` depuis un conteneur), le trafic reste sur l’appli principale.
 
-**Guide pas à pas (étapes 0 → 7) :** [`deploy/dashboard-routing.md`](deploy/dashboard-routing.md). Exemples : [`deploy/traefik-solireport-dynamic.example.yml`](deploy/traefik-solireport-dynamic.example.yml) (Traefik), [`deploy/nginx-solidata-proxy-dashboard.example.conf`](deploy/nginx-solidata-proxy-dashboard.example.conf) (nginx type **solidata-proxy**).
+**Guide pas à pas (étapes 0 → 7) :** [`deploy/dashboard-routing.md`](deploy/dashboard-routing.md). Exemples : [`deploy/traefik-solireport-dynamic.example.yml`](deploy/traefik-solireport-dynamic.example.yml) (Traefik), [`deploy/nginx-solidata-proxy-dashboard.example.conf`](deploy/nginx-solidata-proxy-dashboard.example.conf) (nginx type **solidata-proxy**). Fichier **prêt à copier** dans le conteneur : [`deploy/dashboard.solidata.online.conf`](deploy/dashboard.solidata.online.conf).
 
 **Test immédiat sur le serveur** (prouve que SoliReport est prêt, il manque seulement le routage public) :
 

@@ -1,0 +1,21 @@
+# Copier vers le repertoire "dynamic" de Traefik (ou tout dossier file.provider),
+# puis adapter certResolver et entryPoints selon votre traefik.yml statique.
+#
+# Si ca ne repond pas, essayez en dernier recours l'URL backend :
+#   http://172.17.0.1:8088   (Linux, bridge par defaut)
+#   http://host.docker.internal:8088   (si active dans daemon.json)
+
+http:
+  routers:
+    solireport-dashboard:
+      rule: Host(`dashboard.solidata.online`)
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+      service: solireport-dashboard
+  services:
+    solireport-dashboard:
+      loadBalancer:
+        servers:
+          - url: "http://172.17.0.1:8088"

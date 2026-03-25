@@ -1,63 +1,112 @@
-# Router `dashboard.solidata.online` vers SoliReport (port 8088)
+# Guide pas à pas : afficher SoliReport sur `dashboard.solidata.online`
 
-Tant que le **reverse proxy** qui gère le HTTPS (souvent dans Docker sur 80/443) n’a **pas une règle dédiée** pour `dashboard.solidata.online` vers `http://127.0.0.1:8088`, le navigateur continuera d’afficher **l’autre appli** (même `server` par défaut, wildcard `*.solidata.online`, ou redirection).
+SoliReport écoute en **HTTP sur le port 8088** de la machine. Le navigateur utilise **HTTPS** sur le port **443** : c’est **un autre programme** (reverse proxy) qui doit recevoir `https://dashboard.solidata.online` et **transférer** la requête vers `http://127.0.0.1:8088` (ou l’équivalent vu depuis un conteneur).
 
-## 1. Vérifications rapides
+Suivez les étapes **dans l’ordre**. Notez sur papier le nom du conteneur proxy repéré à l’étape 2.
 
-Sur votre PC ou le serveur :
+---
+
+## Étape 0 — SSH sur le serveur
+
+```bash
+ssh root@votre-serveur
+```
+
+---
+
+## Étape 1 — DNS et SoliReport OK
 
 ```bash
 dig +short dashboard.solidata.online
-```
-
-L’IP doit être celle du serveur où tourne `docker compose` SoliReport.
-
-Prouver que SoliReport répond **si le bon Host est envoyé** (sans toucher au DNS) :
-
-```bash
 curl -sS -H "Host: dashboard.solidata.online" http://127.0.0.1:8088/live
 ```
 
-Attendu : `ok`. Si oui, il ne manque que la config du **proxy frontal**.
+- La commande `dig` doit afficher **l’IP de ce serveur** (celui où vous êtes connecté).
+- La commande `curl` doit afficher **`ok`**.
 
-## 2. Où configurer ?
+Si `curl` ne répond pas : corrigez d’abord `docker compose` dans `/var/www/solireport` (ce guide ne suffit pas).
+
+---
+
+## Étape 2 — Quel reverse proxy gère le HTTPS ?
+
+```bash
+docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Ports}}"
+```
+
+Repérez une ligne avec **`0.0.0.0:443->`** ou **`:::443->`**.
+
+| Si l’image / le nom ressemble à… | Allez à… |
+|----------------------------------|----------|
+| `traefik` | **Étape 3 — Traefik** |
+| `caddy` | **Étape 4 — Caddy** |
+| `nginxproxy/nginx-proxy` ou `jwilder/nginx-proxy` | **Étape 5 — nginx-proxy** |
+| `nginx` (seul mot ou officiel) | **Étape 6 — Nginx dans Docker** |
+| Rien en 443 sur Docker | Nginx ou Caddy **sur l’hôte** : **Étape 7** |
+
+Si vous hésitez, copiez-collez la **sortie complète** de `docker ps` dans un message à votre interlocuteur technique.
+
+---
+
+## Étape 3 — Traefik
+
+### 3.1 Retrouver le nom du `certificatesResolver`
 
 Sur le serveur :
 
 ```bash
-docker ps --format "{{.Names}}\t{{.Image}}\t{{.Ports}}"
+sudo find /root /home /opt /var -name "traefik.yml" -o -name "traefik.toml" 2>/dev/null | head -20
 ```
 
-Repérez le conteneur qui publie **443** (Traefik, nginx-proxy, Caddy, etc.). C’est **lui** qu’il faut compléter (fichier dynamic, labels `docker-compose`, etc.).
+Ouvrez le fichier trouvé (souvent dans le dossier du projet qui lance Traefik) et cherchez `certificatesResolvers`. Notez le **nom** (ex. `letsencrypt`, `myresolver`, `cloudflare`).
 
-## 3. Exemple Traefik (fichier dynamic)
-
-Adaptez `entrypoints`, `certificatesResolvers` et l’URL du serveur (souvent `http://172.17.0.1:8088` depuis Traefik sur Linux, ou `http://host.docker.internal:8088` si activé).
-
-Fichier à inclure dans `providers.file.directory` de Traefik, par ex. `dynamic/solireport.yml` :
-
-```yaml
-http:
-  routers:
-    solireport-dashboard:
-      rule: Host(`dashboard.solidata.online`)
-      entryPoints:
-        - websecure
-      tls:
-        certResolver: letsencrypt
-      service: solireport-dashboard
-  services:
-    solireport-dashboard:
-      loadBalancer:
-        servers:
-          - url: "http://172.17.0.1:8088"
+```bash
+grep -R "certificatesResolvers" -n . 2>/dev/null | head -20
 ```
 
-Remplacez `letsencrypt` par le nom de **votre** resolver ACME dans `traefik.yml`.
+*(À lancer depuis le répertoire où se trouve votre `docker-compose` principal, ex. `cd /chemin/vers/solidata`.)*
 
-Redémarrage / reload Traefik selon votre installation.
+### 3.2 Retrouver le nom de l’`entrypoint` HTTPS
 
-## 4. Exemple Caddy (bloc sur le serveur hôte ou conteneur Caddy)
+Dans le même fichier Traefik, cherchez `entryPoints`. Le point d’entrée TLS s’appelle souvent **`websecure`** ou **`https`**. Notez-le.
+
+### 3.3 Créer la règle dynamique
+
+1. Copiez le fichier d’exemple du dépôt :
+
+   `deploy/traefik-solireport-dynamic.example.yml`
+
+2. Sur le serveur, placez-le dans le dossier que Traefik charge en **file provider** (souvent `./dynamic`, `./traefik/dynamic`, etc. — regardez dans `traefik.yml` la clé `providers.file.directory`).
+
+3. Éditez le fichier :
+
+   - `certResolver: letsencrypt` → remplacez par **votre** nom d’étape 3.1.
+   - `entryPoints: - websecure` → remplacez si besoin par **votre** entrée HTTPS (3.2).
+
+4. URL du backend : gardez d’abord `http://172.17.0.1:8088`.  
+   Si après reload ça ne marche pas, testez `http://host.docker.internal:8088` (nécessite parfois `extra_hosts` sur le service Traefik).
+
+### 3.4 Recharger Traefik
+
+```bash
+docker restart <nom_du_conteneur_traefik>
+```
+
+*(Ou `docker compose restart traefik` depuis le bon répertoire.)*
+
+### 3.5 Vérifier
+
+```bash
+curl -sI https://dashboard.solidata.online/live | head -5
+```
+
+Vous voulez voir **HTTP/2 200** (ou 301 uniquement si vous redirigez HTTP→HTTPS une seule fois, pas vers solidata.online).
+
+---
+
+## Étape 4 — Caddy
+
+Ouvrez le **Caddyfile** utilisé par votre conteneur ou service Caddy et ajoutez **un bloc dédié** (en dehors du bloc `solidata.online` s’il force une redirection) :
 
 ```caddyfile
 dashboard.solidata.online {
@@ -65,14 +114,70 @@ dashboard.solidata.online {
 }
 ```
 
-## 5. Piège fréquent : wildcard
+Rechargez Caddy (`docker restart …` ou `caddy reload` selon votre install), puis testez comme en **3.5**.
 
-Si un site est déclaré avec `*.solidata.online` ou une règle « catch-all », il peut **prendre** `dashboard` avant SoliReport. Il faut soit :
+---
 
-- une règle **plus spécifique** pour `dashboard.solidata.online` **en priorité**, soit  
-- retirer le wildcard, soit  
-- exclure explicitement le sous-domaine dashboard.
+## Étape 5 — nginx-proxy (jwilder)
 
-## 6. Redirection côté « autre appli »
+Il faut un conteneur sur le **même réseau Docker** que nginx-proxy, avec les variables :
 
-Si `curl -I https://dashboard.solidata.online` renvoie un **301/302** vers `solidata.online`, cherchez dans la config Nginx/Caddy/Traefik de **l’appli principale** une règle du type « tout sauf X → redirect » et corrigez-la.
+```yaml
+environment:
+  - VIRTUAL_HOST=dashboard.solidata.online
+  - LETSENCRYPT_HOST=dashboard.solidata.online
+  - VIRTUAL_PORT=80
+```
+
+Le plus simple est souvent d’**attacher** le service `web` SoliReport au réseau de nginx-proxy (réseau externe dans `docker-compose` SoliReport) et d’exposer le conteneur `solireport-web` avec ces labels/variables selon la variante (nginx-proxy + companion). Si votre stack utilise **un seul** `docker-compose` pour tout, demandez l’aide de la personne qui l’a écrite : l’intégration dépend du fichier exact.
+
+---
+
+## Étape 6 — Nginx (conteneur)
+
+Dans le `server` qui écoute en **443** pour `dashboard.solidata.online`, ajoutez :
+
+```nginx
+location / {
+    proxy_pass http://172.17.0.1:8088;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+Adaptez `172.17.0.1` si votre passerelle Docker n’est pas l’IP par défaut (`ip -4 addr show docker0`).
+
+---
+
+## Étape 7 — Pas de Docker sur 443 (Nginx sur l’hôte)
+
+Si c’est **nginx** installé avec `apt` qui écoute sur 443, créez un nouveau site :
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name dashboard.solidata.online;
+    ssl_certificate     /etc/letsencrypt/live/dashboard.solidata.online/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/dashboard.solidata.online/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8088;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Émettez le certificat (`certbot certonly` ou `--nginx`), `nginx -t`, `systemctl reload nginx`.
+
+---
+
+## Si ça échoue encore
+
+1. `curl -sI https://dashboard.solidata.online/` — noter **Location:** si redirection.
+2. Vérifier qu’aucune règle **wildcard** `*.solidata.online` ne prend le dessus.
+3. Essayer l’autre URL backend : `172.17.0.1:8088` ↔ `127.0.0.1:8088` selon que le proxy est **dans** ou **hors** Docker.

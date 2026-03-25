@@ -82,6 +82,8 @@ Variable optionnelle : `CORS_ALLOW_ORIGIN` dans `docker compose` (fichier `.env`
 
 **Mises à jour :** `git pull && docker compose up -d --build`
 
+Si `/live` renvoie **404**, l’ancienne image Nginx sans notre config tournait encore, ou le montage du fichier `nginx-default.conf` était vide (fichier absent sur le serveur). Depuis la correction « config dans l’image », faire un **`docker compose build web --no-cache`** puis **`up -d`** après `git pull`.
+
 ---
 
 ### Option B — Nginx + systemd sur l’hôte (sans Docker pour SoliReport)

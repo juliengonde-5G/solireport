@@ -48,6 +48,61 @@ Si vous hésitez, copiez-collez la **sortie complète** de `docker ps` dans un m
 
 ---
 
+## Cas réel : `solidata-proxy` (nginx:alpine) + stack SoliReport
+
+Si `docker ps` ressemble à :
+
+- `solidata-proxy` → `nginx:alpine` avec **80** et **443**
+- `solireport-web` → port **8088** sur l’hôte
+
+alors **tout le routage public** se configure dans **nginx au sein de `solidata-proxy`**, pas dans SoliReport.
+
+### A. Mettre `solireport-web` sur le réseau Docker de Solidata
+
+Sans cela, le nom `solireport-web` ne se résout pas depuis le proxy.
+
+```bash
+docker inspect solidata-proxy --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{"\n"}}{{end}}'
+```
+
+Notez le nom de réseau (ex. `solidata_default`, `solidataonline_default`, etc.).
+
+```bash
+docker network connect <CE_NOM> solireport-web
+```
+
+Vérification :
+
+```bash
+docker exec solidata-proxy wget -qO- http://solireport-web/live
+```
+
+Attendu : `ok`.
+
+### B. Ajouter le vhost dans nginx (solidata-proxy)
+
+1. Sur la machine, ouvrez le projet **Solidata** (là où est le `docker-compose` qui lance `solidata-proxy`).
+2. Repérez comment les fichiers nginx sont montés dans le conteneur (souvent `./nginx/conf.d` → `/etc/nginx/conf.d`).
+3. Créez un nouveau fichier, par ex. `dashboard.solidata.online.conf`, en vous inspirant de **`deploy/nginx-solidata-proxy-dashboard.example.conf`** dans le dépôt SoliReport (`git pull` dans `/var/www/solireport` pour le récupérer).
+4. Rechargez nginx :
+
+```bash
+docker exec solidata-proxy nginx -t && docker exec solidata-proxy nginx -s reload
+```
+
+### C. Certificat TLS pour `dashboard.solidata.online`
+
+Utilisez la **même méthode** que pour `solidata.online` (souvent **Certbot** + volume `certbot` + challenge HTTP sur le port 80). Émettez un certificat pour **`dashboard.solidata.online`**, puis **décommentez** le bloc `listen 443` dans la config (voir l’exemple dans le fichier `.example.conf`).
+
+### D. Test
+
+```bash
+curl -sI http://dashboard.solidata.online/live | head -5
+curl -sI https://dashboard.solidata.online/live | head -5
+```
+
+---
+
 ## Étape 3 — Traefik
 
 ### 3.1 Retrouver le nom du `certificatesResolver`

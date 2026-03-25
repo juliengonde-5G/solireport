@@ -54,6 +54,17 @@ python3 -m venv .venv
 
 4. Dans l’application (**Paramètres**), **URL du proxy** : `https://dashboard.solidata.online/api/pennylane` (sans chemin supplémentaire ; les appels ajoutent `me`, `exports/...`, etc.).
 
+### Le sous-domaine ouvre solidata.online au lieu du dashboard
+
+Cela arrive quand **Nginx ne possède pas encore un `server` dont le `server_name` est exactement `dashboard.solidata.online`**. Les requêtes tombent alors sur le **vhost par défaut** (`default_server`), souvent celui de `solidata.online`, avec redirection ou autre appli.
+
+**À vérifier :**
+
+1. **DNS** : `dashboard.solidata.online` doit avoir un enregistrement **A** (ou **AAAA**) vers l’IP du serveur qui héberge SoliReport (commande : `dig +short dashboard.solidata.online`).
+2. **Nginx** : ajouter un fichier de site dédié (voir `deploy/nginx-dashboard.example.conf`), avec uniquement `server_name dashboard.solidata.online;`, `root /var/www/solireport;`, et les blocs `location` pour `/api/pennylane/` et les fichiers statiques. Activer le site, tester `sudo nginx -t`, puis `sudo systemctl reload nginx`.
+3. **Certificat TLS** : émettre un certificat pour `dashboard.solidata.online` (ex. `certbot --nginx -d dashboard.solidata.online`).
+4. **Pas de catch-all indésirable** : si le vhost `solidata.online` utilise `server_name solidata.online *.solidata.online`, il peut **aussi** prendre `dashboard.solidata.online`. Dans ce cas, retirez le wildcard du site principal ou assurez-vous que le vhost **dashboard** est chargé et prioritaire (fichier séparé avec `server_name` explicite suffit en général : Nginx choisit le `server_name` le plus précis).
+
 ### Déploiement automatique depuis GitHub
 
 Le workflow `.github/workflows/deploy-production.yml` pousse le contenu du dépôt vers le serveur par **rsync** à chaque push sur `main` (ou déclenchement manuel *workflow_dispatch*).

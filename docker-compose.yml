@@ -1,0 +1,41 @@
+# SoliReport — deploiement simple quand les ports 80/443 sont deja pris (ex. Docker).
+#
+# Demarrage :
+#   cd /var/www/solireport && docker compose up -d
+#
+# Le site ecoute sur le port 8088 de la machine (HTTP). Configurez votre reverse proxy
+# existant pour envoyer https://dashboard.solidata.online vers http://127.0.0.1:8088
+# (ou l'IP du serveur depuis un autre conteneur : souvent http://172.17.0.1:8088 sur Linux).
+#
+# Dans l'appli (Parametres), URL du proxy : https://dashboard.solidata.online/api/pennylane
+
+services:
+  pennylane-proxy:
+    build: .
+    container_name: solireport-pennylane-proxy
+    restart: unless-stopped
+    environment:
+      CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN:-https://dashboard.solidata.online}
+    expose:
+      - "8765"
+    networks:
+      - solireport
+
+  web:
+    image: nginx:alpine
+    container_name: solireport-web
+    restart: unless-stopped
+    depends_on:
+      - pennylane-proxy
+    ports:
+      # Accessible depuis l'hote et depuis d'autres conteneurs (ex. Traefik -> http://172.17.0.1:8088)
+      - "8088:80"
+    volumes:
+      - .:/usr/share/nginx/html:ro
+      - ./deploy/docker/nginx-default.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - solireport
+
+networks:
+  solireport:
+    driver: bridge

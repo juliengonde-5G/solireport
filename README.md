@@ -37,7 +37,33 @@ La clé API Pennylane n’est pas injectée dans le HTML : saisie dans le formul
 
 ## Déploiement (dashboard.solidata.online)
 
-### Une fois sur le serveur
+### Option A — Docker Compose (**recommandé** si les ports 80/443 sont déjà pris par Docker)
+
+Un stack **Nginx + Gunicorn** sert l’appli sur le port **8088** (HTTP). Vous ne touchez pas aux ports 80/443 : votre reverse proxy existant (Traefik, Caddy, etc.) envoie le trafic HTTPS de `dashboard.solidata.online` vers `http://127.0.0.1:8088` ou `http://172.17.0.1:8088` (depuis un autre conteneur sur Linux).
+
+**Sur le serveur :**
+
+```bash
+cd /var/www/solireport
+git pull origin main
+docker compose build --pull
+docker compose up -d
+curl -sS http://127.0.0.1:8088/health
+```
+
+Ensuite, configurez le **proxy frontal** (celui qui écoute déjà en 443) pour router le host `dashboard.solidata.online` vers **http://`IP_DU_SERVEUR`:8088** (ou `http://172.17.0.1:8088` depuis un conteneur sur le réseau bridge par défaut). Le TLS reste géré par ce frontal.
+
+Dans l’appli (**Paramètres**), **URL du proxy** : `https://dashboard.solidata.online/api/pennylane`.
+
+Variable optionnelle : `CORS_ALLOW_ORIGIN` dans `docker compose` (fichier `.env` à côté du compose ou `export` avant `up`).
+
+**Mises à jour :** `git pull && docker compose up -d --build`
+
+---
+
+### Option B — Nginx + systemd sur l’hôte (sans Docker pour SoliReport)
+
+À utiliser seulement si **rien** n’écoute sur 80/443 sur la machine, ou si vous dédiez ces ports à Nginx hôte.
 
 1. Répertoire déployé (ex. `/var/www/solireport`) : HTML à la racine, `public/`, `pennylane_proxy.py`, `requirements.txt`.
 
@@ -81,9 +107,9 @@ Configurer les secrets du dépôt (**Settings → Secrets and variables → Acti
 
 Sur le serveur : clé publique dans `~/.ssh/authorized_keys` de `PROD_USER`, droits en écriture sur `PROD_REMOTE_PATH`. Après le premier sync, redémarrer le service Gunicorn si nécessaire (`sudo systemctl restart solireport-proxy` ou équivalent).
 
-### Script d’installation sur le serveur (SSH)
+### Script d’installation systemd (option B uniquement)
 
-Une fois les fichiers du dépôt présents sur le serveur (git clone, rsync ou workflow) :
+Inutile si vous utilisez **Docker Compose** (option A). Sinon, une fois les fichiers du dépôt sur le serveur :
 
 ```bash
 cd /var/www/solireport   # ou votre PROD_REMOTE_PATH
@@ -102,6 +128,7 @@ Variables utiles :
 
 | Fichier | Rôle |
 |--------|------|
+| `docker-compose.yml` + `Dockerfile` | Déploiement simple (Nginx + proxy sur le port 8088) |
 | `solidarite-textile.html` / `frip-and-co.html` | Instances par société (`data-company-slug`) |
 | `pennylane_proxy.py` | Proxy Flask (équivalent opérationnel du nom « pennylane-proxy ») |
 | `public/css/solireport.css` | Charte visuelle (navy / slate, reporting) |

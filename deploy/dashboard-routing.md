@@ -93,7 +93,20 @@ docker cp /var/www/solireport/deploy/dashboard.solidata.online.conf solidata-pro
 docker exec solidata-proxy nginx -t && docker exec solidata-proxy nginx -s reload
 ```
 
-Si `docker cp` échoue (volume en lecture seule), copiez le même fichier dans le dossier **hôte** qui est monté sur `/etc/nginx/conf.d/` (voir `docker inspect solidata-proxy` → section `Mounts`), puis rechargez Nginx.
+Si Docker répond **`mounted volume is marked read-only`** : le `conf.d` du conteneur est un volume **hôte → conteneur** en **ro**. Ne pas utiliser `docker cp` vers le conteneur. Trouvez le **chemin sur l’hôte** et copiez-y le fichier :
+
+```bash
+docker inspect solidata-proxy --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{"\n"}}{{end}}'
+```
+
+Repérez la ligne dont la **destination** est `.../conf.d` ou `/etc/nginx/conf.d` (le chemin exact peut varier). Puis, en remplaçant `/chemin/sur/hote/conf.d` par ce **Source** :
+
+```bash
+sudo cp /var/www/solireport/deploy/dashboard.solidata.online.conf /chemin/sur/hote/conf.d/dashboard.solidata.online.conf
+docker exec solidata-proxy nginx -t && docker exec solidata-proxy nginx -s reload
+```
+
+Le fichier apparaît alors dans le conteneur sans écrire dans un volume **ro**.
 
 **2.** Vérifier en **HTTP** (sans « s ») :
 

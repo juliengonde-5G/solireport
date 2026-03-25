@@ -64,6 +64,15 @@ Si `docker compose` n’existe pas, essayez l’ancienne CLI : `docker-compose` 
 | `detected dubious ownership` | Répertoire déployé par un autre utilisateur que celui qui lance `git` | `sudo git config --global --add safe.directory /var/www/solireport` (une fois), ou harmoniser `chown` du dossier |
 | `no configuration file provided: not found` | Pas de `docker-compose.yml` dans le répertoire courant, ou mauvais `cd` | `cd /var/www/solireport` puis `ls docker-compose.yml`, ou `git pull` après `safe.directory` |
 | `curl ... 8088 ... Failed to connect` | Les conteneurs ne tournent pas | `docker compose -f /var/www/solireport/docker-compose.yml ps` et `docker compose ... logs` |
+| `curl: (56) Recv failure: Connection reset by peer` | Souvent **HTTPS sur un port HTTP** (8088), proxy frontal mal configuré, ou conteneur qui coupe la connexion | Voir encadre ci-dessous |
+
+**Si `curl` affiche « Connection reset by peer »**
+
+1. Utiliser **HTTP** (pas HTTPS) sur le port Docker : `curl -v --http1.1 http://127.0.0.1:8088/live` puis `http://127.0.0.1:8088/health`.
+2. Si **`/live`** répond `ok` mais **`/health`** reset : le backend Python ne répond pas — `docker compose logs pennylane-proxy`.
+3. Si **`/live`** reset aussi : port ou pare-feu — `docker ps`, `ss -tlnp | grep 8088`, `docker compose logs web`.
+4. Depuis l’Internet, tester **HTTPS** sur le domaine (pas `:8088` en TLS) : le certificat est sur le reverse proxy, pas sur ce stack.
+5. Forcer IPv4 : `curl -4 http://127.0.0.1:8088/live`.
 
 Ensuite, configurez le **proxy frontal** (celui qui écoute déjà en 443) pour router le host `dashboard.solidata.online` vers **http://`IP_DU_SERVEUR`:8088** (ou `http://172.17.0.1:8088` depuis un conteneur sur le réseau bridge par défaut). Le TLS reste géré par ce frontal.
 

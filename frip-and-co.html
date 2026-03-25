@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SoliReport — Frip and Co</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="public/css/solireport.css" />
+</head>
+<body
+  class="sr-app"
+  data-company-slug="frip-and-co"
+  data-company-title="Frip and Co"
+>
+  <header class="sr-topbar">
+    <div class="sr-brand">
+      <div class="sr-logo" aria-hidden="true">FC</div>
+      <div class="sr-titles">
+        <h1 id="company-title">Frip and Co</h1>
+        <p>SoliReport · Tableau de bord financier</p>
+      </div>
+    </div>
+    <span class="sr-env-badge">dashboard.solidata.online</span>
+  </header>
+
+  <nav class="sr-tabs" role="tablist" aria-label="Sections">
+    <button type="button" class="sr-tab" role="tab" data-tab="synthesis" aria-selected="true">Synth&#232;se</button>
+    <button type="button" class="sr-tab" role="tab" data-tab="import" aria-selected="false">Import</button>
+    <button type="button" class="sr-tab" role="tab" data-tab="settings" aria-selected="false">Param&#232;tres</button>
+    <button type="button" class="sr-tab" role="tab" data-tab="treasury" aria-selected="false">Tr&#233;sorerie</button>
+    <button type="button" class="sr-tab" role="tab" data-tab="debts" aria-selected="false">Dettes &amp; cr&#233;ances</button>
+    <button type="button" class="sr-tab" role="tab" data-tab="plcc" aria-selected="false">P&amp;L centres</button>
+    <button type="button" class="sr-tab" role="tab" data-tab="planal" aria-selected="false">P&amp;L analytique</button>
+    <button type="button" class="sr-tab" role="tab" data-tab="finstat" aria-selected="false">Bilan / CR</button>
+    <button type="button" class="sr-tab" role="tab" data-tab="drc" aria-selected="false">DRC</button>
+    <button type="button" class="sr-tab" role="tab" data-tab="checks" aria-selected="false">Contr&#244;les</button>
+  </nav>
+
+  <main class="sr-main">
+    <section id="panel-synthesis" class="sr-panel" role="tabpanel" aria-hidden="false">
+      <h2 class="sr-section-title">Synthèse dirigeant</h2>
+      <p class="sr-help" id="meta-rowcount"></p>
+      <div class="sr-kpi-grid">
+        <div class="sr-kpi"><label>Produits (axe Analyse)</label><span class="sr-value sr-num" id="kpi-syn-ca">—</span></div>
+        <div class="sr-kpi"><label>Charges (axe Analyse)</label><span class="sr-value sr-num" id="kpi-syn-chg">—</span></div>
+        <div class="sr-kpi"><label>Résultat</label><span class="sr-value sr-num" id="kpi-syn-res">—</span></div>
+        <div class="sr-kpi"><label>Trésorerie (position indicative)</label><span class="sr-value sr-num" id="kpi-syn-treso">—</span></div>
+      </div>
+      <div class="sr-card">
+        <h3 class="sr-section-title">Produits mensuels (classe 7)</h3>
+        <div class="sr-chart-box"><canvas id="chart-synthesis-pl" aria-label="Graphique produits"></canvas></div>
+      </div>
+    </section>
+
+    <section id="panel-import" class="sr-panel" role="tabpanel" aria-hidden="true">
+      <h2 class="sr-section-title">Import fichiers Pennylane</h2>
+      <div class="sr-card">
+        <p class="sr-help">Grand Livre analytique (.xlsx) et transactions bancaires. Les données remplacent l&apos;année correspondante.</p>
+        <div class="sr-dropzone" id="drop-gl" tabindex="0">Déposer le <strong>Grand Livre analytique</strong> ici ou cliquer pour parcourir</div>
+        <input type="file" id="file-gl" accept=".xlsx,.xls" hidden />
+        <span class="sr-badge sr-badge--warn" id="import-gl-badge">Aucun GL importé</span>
+        <div class="sr-dropzone" id="drop-bank" tabindex="0">Déposer les <strong>transactions bancaires</strong> ici</div>
+        <input type="file" id="file-bank" accept=".xlsx,.xls" hidden />
+        <span class="sr-badge sr-badge--warn" id="import-bank-badge">Aucune banque importée</span>
+        <h3 class="sr-section-title">Journal des imports</h3>
+        <div class="sr-log" id="import-log"></div>
+      </div>
+    </section>
+
+    <section id="panel-settings" class="sr-panel" role="tabpanel" aria-hidden="true">
+      <h2 class="sr-section-title">Paramètres &amp; API</h2>
+      <div class="sr-card">
+        <div class="sr-form-grid">
+          <div class="sr-field">
+            <label for="input-proxy-url">URL du proxy (sans chemin API)</label>
+            <input type="url" id="input-proxy-url" name="proxy" autocomplete="off" placeholder="https://dashboard.solidata.online" />
+          </div>
+          <div class="sr-field">
+            <label for="input-api-key">Clé API Pennylane</label>
+            <input type="password" id="input-api-key" name="apikey" autocomplete="off" placeholder="Bearer non stocké après rechargement" />
+          </div>
+          <div class="sr-field">
+            <label for="input-period-start">Période GL — Du</label>
+            <input type="date" id="input-period-start" />
+          </div>
+          <div class="sr-field">
+            <label for="input-period-end">Au</label>
+            <input type="date" id="input-period-end" />
+          </div>
+        </div>
+        <div class="sr-btn-row">
+          <button type="button" class="sr-btn sr-btn--primary" id="btn-settings-save">Enregistrer</button>
+          <button type="button" class="sr-btn sr-btn--secondary" id="btn-test-me">Tester connexion</button>
+          <button type="button" class="sr-btn sr-btn--secondary" id="btn-diag-scopes">Diagnostic scopes</button>
+          <button type="button" class="sr-btn sr-btn--secondary" id="btn-fetch-gl">Récupérer GL (export async)</button>
+        </div>
+        <p class="sr-help">La clé API n&apos;est pas injectée dans la page : saisie locale uniquement. Stocker l&apos;URL du proxy dans le navigateur via « Enregistrer ».</p>
+        <h3 class="sr-section-title">Journal diagnostic</h3>
+        <div class="sr-log" id="diag-log"></div>
+      </div>
+    </section>
+
+    <section id="panel-treasury" class="sr-panel" role="tabpanel" aria-hidden="true">
+      <h2 class="sr-section-title">Trésorerie (comptes 512, axe Trésorerie)</h2>
+      <div class="sr-kpi-grid">
+        <div class="sr-kpi"><label>Position</label><span class="sr-value sr-num" id="kpi-treso-pos">—</span></div>
+        <div class="sr-kpi"><label>Encaissements YTD</label><span class="sr-value sr-num" id="kpi-treso-enc">—</span></div>
+        <div class="sr-kpi"><label>Décaissements YTD</label><span class="sr-value sr-num" id="kpi-treso-dec">—</span></div>
+        <div class="sr-kpi"><label>Variation nette</label><span class="sr-value sr-num" id="kpi-treso-net">—</span></div>
+      </div>
+      <div class="sr-grid-2">
+        <div class="sr-card">
+          <h3 class="sr-section-title">Flux et cumul</h3>
+          <div class="sr-chart-box sr-chart-box--tall"><canvas id="chart-treasury-cumul"></canvas></div>
+        </div>
+        <div class="sr-card">
+          <h3 class="sr-section-title">Encaissements / décaissements / cumul</h3>
+          <div class="sr-chart-box sr-chart-box--tall"><canvas id="chart-treasury-dual"></canvas></div>
+        </div>
+      </div>
+      <div class="sr-card">
+        <h3 class="sr-section-title">Flux par grande famille</h3>
+        <div id="treasury-flux-table" class="sr-table-wrap"></div>
+      </div>
+    </section>
+
+    <section id="panel-debts" class="sr-panel" role="tabpanel" aria-hidden="true">
+      <h2 class="sr-section-title">Dettes &amp; créances</h2>
+      <div class="sr-card sr-card--muted">
+        <p class="sr-help">Balances âgées 401 / 411 / 43x et ratios BFR : prochaine itération (données GL déjà disponibles après import).</p>
+      </div>
+    </section>
+
+    <section id="panel-plcc" class="sr-panel" role="tabpanel" aria-hidden="true">
+      <h2 class="sr-section-title">P&amp;L par centre de coûts</h2>
+      <div class="sr-card sr-card--muted">
+        <p class="sr-help">Tableau croisé catégories / mois (axe Analyse comptable) — à brancher sur les regroupements paramétrables.</p>
+      </div>
+    </section>
+
+    <section id="panel-planal" class="sr-panel" role="tabpanel" aria-hidden="true">
+      <h2 class="sr-section-title">P&amp;L analytique</h2>
+      <div class="sr-card sr-card--muted">
+        <p class="sr-help">Cartes par centre, répartition secondaire, toggles centres — prochaine itération.</p>
+      </div>
+    </section>
+
+    <section id="panel-finstab" class="sr-panel" role="tabpanel" aria-hidden="true">
+      <h2 class="sr-section-title">Bilan / Compte de résultat</h2>
+      <div class="sr-card sr-card--muted">
+        <p class="sr-help">Agrégation par préfixes de comptes et comparaison N / N-1 — prochaine itération.</p>
+      </div>
+    </section>
+
+    <section id="panel-drc" class="sr-panel" role="tabpanel" aria-hidden="true">
+      <h2 class="sr-section-title">Daily Running Cost</h2>
+      <div class="sr-card sr-card--muted">
+        <p class="sr-help">Saisie jours d&apos;activité par centre et graphique comparatif — prochaine itération.</p>
+      </div>
+    </section>
+
+    <section id="panel-checks" class="sr-panel" role="tabpanel" aria-hidden="true">
+      <h2 class="sr-section-title">Contrôles de cohérence</h2>
+      <div class="sr-card">
+        <div id="checks-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="public/js/format.js"></script>
+  <script src="public/js/storage.js"></script>
+  <script src="public/js/groupings.js"></script>
+  <script src="public/js/gl-parser.js"></script>
+  <script src="public/js/bank-parser.js"></script>
+  <script src="public/js/pennylane-api.js"></script>
+  <script src="public/js/charts-helper.js"></script>
+  <script src="public/js/app.js"></script>
+</body>
+</html>

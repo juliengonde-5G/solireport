@@ -1,0 +1,64 @@
+# Deploiement production : rsync SSH vers le serveur (dashboard.solidata.online ou autre).
+#
+# Secrets (Settings > Secrets and variables > Actions) :
+#   PROD_SSH_KEY       Cle privee SSH complete
+#   PROD_HOST          Hote du serveur
+#   PROD_USER          Utilisateur SSH
+#   PROD_REMOTE_PATH   Repertoire distant (ex: /var/www/solireport), sans slash final
+#
+# Optionnel :
+#   PROD_SSH_PORT      Port SSH (defaut 22)
+
+name: Deploy production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
+jobs:
+  rsync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Installer rsync
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq rsync openssh-client
+
+      - name: Configurer SSH
+        env:
+          SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+          SSH_HOST: ${{ secrets.PROD_HOST }}
+          SSH_PORT: ${{ secrets.PROD_SSH_PORT }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          PORT="${SSH_PORT:-22}"
+          ssh-keyscan -p "$PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Synchroniser les fichiers
+        env:
+          SSH_HOST: ${{ secrets.PROD_HOST }}
+          SSH_USER: ${{ secrets.PROD_USER }}
+          SSH_PATH: ${{ secrets.PROD_REMOTE_PATH }}
+          SSH_PORT: ${{ secrets.PROD_SSH_PORT }}
+        run: |
+          PORT="${SSH_PORT:-22}"
+          RSYNC_SSH="ssh -i $HOME/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -p $PORT"
+          rsync -avzr --omit-dir-times \
+            --exclude '.git/' \
+            --exclude '.github/' \
+            --exclude '.venv/' \
+            --exclude 'venv/' \
+            --exclude '__pycache__/' \
+            --exclude '.env' \
+            --exclude '.cursor/' \
+            -e "$RSYNC_SSH" \
+            ./ "${SSH_USER}@${SSH_HOST}:${SSH_PATH}/"

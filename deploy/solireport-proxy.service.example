@@ -1,0 +1,15 @@
+[Unit]
+Description=SoliReport proxy Pennylane (Flask/Gunicorn)
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/solireport
+Environment=PORT=8765
+Environment=CORS_ALLOW_ORIGIN=https://dashboard.solidata.online
+ExecStart=/var/www/solireport/.venv/bin/gunicorn -w 2 -b 127.0.0.1:8765 pennylane_proxy:app
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

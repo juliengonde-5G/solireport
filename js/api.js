@@ -19,7 +19,7 @@ window.PennylaneAPI = (function() {
 
     // Internal fetch helper: all calls go through the proxy
     async function _fetch(method, endpoint, body, isBlob) {
-        var url = proxyUrl + '/api/' + endpoint;
+        var url = proxyUrl + '/' + endpoint;
         var opts = {
             method: method,
             headers: headers()

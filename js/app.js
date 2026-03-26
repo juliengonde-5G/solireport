@@ -11,6 +11,7 @@
         { id: 'synthese', label: 'Synthese', icon: '\u25A3', module: 'TabSynthese' },
         { id: 'import', label: 'Import', icon: '\u21E9', module: 'TabImport' },
         { id: 'parametres', label: 'Parametres', icon: '\u2699', module: 'TabParametres' },
+        { id: 'operations', label: 'Operations', icon: '\u2696', module: 'TabOperations' },
         { id: 'tresorerie', label: 'Tresorerie', icon: '\u20AC', module: 'TabTresorerie' },
         { id: 'bfr', label: 'BFR & Creances', icon: '\u2696', module: 'TabBFR' },
         { id: 'pl-centre', label: 'P&L Centre', icon: '\u2261', module: 'TabPLCentre' },

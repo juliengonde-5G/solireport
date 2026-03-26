@@ -6,14 +6,14 @@ window.DashboardConfig = {
             name: 'Solidarite Textile',
             shortName: 'ST',
             logo: 'S',
-            proxyUrl: 'http://dashboard.solidata.online:5555',
+            proxyUrl: 'https://dashboard.solidata.online/proxy',
             color: '#1e40af'
         },
         'fripandco': {
             name: 'Frip and Co',
             shortName: 'FC',
             logo: 'F',
-            proxyUrl: 'http://dashboard.solidata.online:5555',
+            proxyUrl: 'https://dashboard.solidata.online/proxy',
             color: '#7c3aed'
         }
     },
